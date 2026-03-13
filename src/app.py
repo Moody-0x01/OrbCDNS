@@ -1,3 +1,4 @@
+from os import mkdir, path
 from socket import gethostbyname, gethostname
 
 from flask import Flask, request, send_file
@@ -9,10 +10,9 @@ from Funcs import (
     SaveUserBackground, 
     getUserBg, 
     saveUserPostImage,
-    GetUserPostImg
+    GetUserPostImg,
+    CDN
 )
-
-from json import loads
 
 app = Flask(__name__)
 PORT = 8500
@@ -38,6 +38,7 @@ def GetUserAvatar(uuid, fname):
         return send_file(file, mimetype=f'image/{ext}')
 
     return makeResponse(500, "server could not find config file.")   
+
 @app.route("/Zimg/addbg", methods=["POST"])
 def PostUserBackground():
     data = request.json
@@ -77,8 +78,6 @@ def GetUserPostImgs(uuid, postID, fname):
 
 #--------------------------------------------------------------DONEe------------------------------------------------------------------------
 
-
-
 # @app.route("/Zimg/", methods=["POST"]) # Not implemented!
 # def UpdateUserAvatar(): return "Not implemented"
 # @app.route("/Zimg/", methods=["POST"]) # Not implemented!
@@ -86,4 +85,7 @@ def GetUserPostImgs(uuid, postID, fname):
 
 
 if __name__ == '__main__':
+    # Init the storage dir.
+    if not path.exists(CDN):
+        mkdir(CDN)
     app.run(host=HOST, port=PORT, debug=True)

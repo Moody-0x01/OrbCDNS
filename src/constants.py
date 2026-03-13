@@ -1,9 +1,7 @@
 
 from os import environ
 
-if "cdn" in environ:
-    CDN = environ["cdn"]    
-else:
-    CDN = ""
-
+CDN = "./storage"
 API_URL = "http://localhost:8500"
+
+if "cdn" in environ and environ["cdn"]: CDN = environ["cdn"]

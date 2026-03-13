@@ -2,14 +2,12 @@ from dataclasses import dataclass
 
 @dataclass
 class Response:
-    code: int
-    data: any
+    status: int
+    data: dict|str
 
-    def __dict__(self) -> dict:
+    def make(self) -> tuple[dict, int]:
         return {
-            "code": self.code,
+            "status": self.status,
             "data": self.data
-        }
-    def make(self) -> dict:
-        return self.__dict__()
+        }, self.status
 
