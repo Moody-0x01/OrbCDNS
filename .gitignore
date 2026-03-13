@@ -3,7 +3,10 @@
 ./venv
 venv
 # images
-/src/cdn
-/src/scripts/img
+./src/storage/
+/src/storage/
+
+./tests/img/
+/tests/img/
 # python cache
 __pycache__
