@@ -5,9 +5,9 @@ from base64 import b64encode
 api = "http://localhost:8500"
 
 # Endpoints.
-addIMG = f"{api}/Zimg/addAvatar"
-addBG = f"{api}/Zimg/addbg"
-addPOST = f"{api}/Zimg/NewPostImg"
+addIMG = f"{api}/orb/addAvatar"
+addBG = f"{api}/orb/addbg"
+addPOST = f"{api}/orb/NewPostImg"
 
 def MakeMime(fp):
     ext = fp.name.split("/")[-1].split(".")[1]

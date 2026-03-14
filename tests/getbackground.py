@@ -4,7 +4,7 @@ import os
 from random import randint
 import requests
 
-PAGES=4
+PAGES=20
 HAVEN_KEY = os.environ['WALLHAVEN_API_KEY']
 if not HAVEN_KEY:
     print("U can not download wallpapers/backgrounds with no api key please set: WALLHAVEN_API_KEY")
@@ -46,7 +46,7 @@ for em in final_result:
             fn = u.split('/')[-1]
             response = requests.get(img['path'])
             ibytes = response.content
-            with open(f"./img/backgrounds/{fn}", "wb") as fp: fp.write(ibytes)
+            with open(f"./img/backgrounds/{fn}", "wb+") as fp: fp.write(ibytes)
             print(f"[*] {u} -> {f"./img/backgrounds/{fn}"}")
         except Exception as e:
             raise e

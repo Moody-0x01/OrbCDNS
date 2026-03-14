@@ -1,4 +1,4 @@
-# ZIMG CDN
+# Orb CDNS
 
 ## Notes
 
@@ -46,9 +46,9 @@ from base64 import b64encode
 api = "http://localhost:8500"
 
 # Endpoints.
-addIMG = f"{api}/Zimg/addAvatar"
-addBG = f"{api}/Zimg/addbg"
-addPOST = f"{api}/Zimg/NewPostImg"
+addIMG = f"{api}/orb/addAvatar"
+addBG = f"{api}/orb/addbg"
+addPOST = f"{api}/orb/NewPostImg"
 
 def MakeMime(fp): # Makes a mime object to be sent to the server
 def addAvatar(uuid: int | str, Mime: str) -> dict: # tries adding an avatar image for a user.
@@ -119,12 +119,12 @@ if __name__ == "__main__":
 
 NOTE: Will be added when done with the todos above.
 
-- `/Zimg/addAvatar` add avatar img expects `{"id": some id, "mime": imgMimeObject}`
-- `/Zimg/<uuid>/<fname>` get avatar img expected uuid.
-- `/Zimg/addbg` add background expects `{"id": some id, "mime": imgMimeObject}`
-- `/Zimg/bg/<uuid>/<fname>`	get background expects uuid.
-- `/Zimg/NewPostImg` add user posts with postID, uuid, mime img object.
-- `/Zimg/post/<uuid>/<postID>/<fname>` get a post img using uuid, postID, fname.
+- `/orb/addAvatar` add avatar img expects `{"id": some id, "mime": imgMimeObject}`
+- `/orb/<uuid>/<fname>` get avatar img expected uuid.
+- `/orb/addbg` add background expects `{"id": some id, "mime": imgMimeObject}`
+- `/orb/bg/<uuid>/<fname>`	get background expects uuid.
+- `/orb/NewPostImg` add user posts with postID, uuid, mime img object.
+- `/orb/post/<uuid>/<postID>/<fname>` get a post img using uuid, postID, fname.
 
 
 ## CODES And response examples
@@ -136,12 +136,12 @@ NOTE: Will be added when done with the todos above.
 	{
 		"code": 200, 
 		"data": {
-			"url": "http://localhost:8500/Zimg/bg/1/bg.png"
+			"url": "http://localhost:8500/orb/bg/1/bg.png"
 		}
 	}
 ```
 
-- the response above means that the image is added to the cdn and you can get it using this link `http://localhost:8500/Zimg/bg/1/bg.png`
+- the response above means that the image is added to the cdn and you can get it using this link `http://localhost:8500/orb/bg/1/bg.png`
 
 - the codes are similar to http codes. you can check em then see if you did actually add the image.
 

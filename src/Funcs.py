@@ -53,7 +53,7 @@ def SaveUserImage(data: dict, update = False) -> dict:
 
     Bytes, FName = Unpack(MIME, IMG)
     ImagePath = Upath / FName
-    return Save(f"{API_URL}/Zimg/{ID}/{FName}", ImagePath, Bytes, update)
+    return Save(f"{API_URL}/orb/{ID}/{FName}", ImagePath, Bytes, update)
 
 def getUserImage(uuid: int | str, fname) -> tuple[str, str] | bool:
     if "img" in fname:
@@ -73,7 +73,7 @@ def SaveUserBackground(data: dict, update = False) -> dict:
     if not Upath.exists(): Upath.mkdir()
     Bytes, FName = Unpack(MIME, BG)
     ImagePath = Upath / FName
-    return Save(f"{API_URL}/Zimg/bg/{ID}/{FName}", ImagePath, Bytes, update)
+    return Save(f"{API_URL}/orb/bg/{ID}/{FName}", ImagePath, Bytes, update)
 def getUserBg(uuid: str | int, fname) -> tuple[str, str] | bool:
     if "bg" in fname:
         imgPath = Path(CDN) / str(uuid) / fname
@@ -110,7 +110,7 @@ def saveUserPostImage(data: dict) -> dict:
         Bytes, FName = Unpack(MIME, 2)
 
         ImagePath = currentPostPath / FName
-        return Save(f"{API_URL}/Zimg/post/{ID}/{PID}/{FName}", ImagePath, Bytes)
+        return Save(f"{API_URL}/orb/post/{ID}/{PID}/{FName}", ImagePath, Bytes)
 
     return makeResponse(400, "Can not save multiple mimes at the moment.")
 
