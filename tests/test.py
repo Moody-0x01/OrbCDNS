@@ -1,60 +1,56 @@
 #!/bin/python
 from os import scandir
-import time
 
 from requests import get
 from json import loads
 from methods import *
 
-total = 5
-Avatars = [entry.path for entry in scandir('./img/avatars/')][:total]
-backgrounds = [entry.path for entry in scandir('./img/backgrounds/')][:total]
+Avatars = [entry.path for entry in scandir('./img/avatars/')]
+backgrounds = [entry.path for entry in scandir('./img/backgrounds/')]
+total = min(10, len(backgrounds))
+Avatars = Avatars[:total]
+backgrounds = backgrounds[:total]
 responses = []
-success = 0
+
+def check_code(response: Response) -> None:
+    if response.status_code >= 500:
+        print("Server failed to handle this request with: ", response.status_code)
+        print("Data sent back: ", response.content)
+        exit(1)
+    print(f"Url: {response.url} Code: {response.status_code}", end=" ")
+    print(f"Content: {response.content[:24]}")
 
 def test_avatar_store():
-    global success, total, responses
-    success = 0
-
     for i, img in enumerate(Avatars):
         with open(img, "rb") as fp:
             uuid = i
             mime = MakeMime(fp)
-            print(f"Sending #{i} {img}")
-            time.sleep(1)
             response = addAvatar(uuid, mime)
-            if response.status_code == 200: success += 1
-            else: print(response)
-            responses.append(response)
+            check_code(response)
+            if response.status_code == 200:
+                responses.append(response)
 
-def test_avatar_access():
-    global success, total
-    success = 0
+def _access_check():
+    global responses
     for res in responses:
-        url = loads(res.content)['data']['url']
-        print(url)
-        data = get(url)
-        print(data.status_code)
-        print(data.content)
+        url = loads(res.content)['url']
+        response = get(url)
+        check_code(response)
+    responses = []
 
 def test_bg_store():
-    global success, total
-    success = 0
     for  i, background in enumerate(backgrounds):
             uuid = i
-            print(f"Sending #{i} {background}")
             with open(background, "rb") as fp:
                 mime = MakeMime(fp)
-                # time.sleep(0.2)
                 response = addbg(uuid, mime)
-                if response.status_code == 200 || : success += 1
-                # else: print(response)
-                responses.append(response)
+                check_code(response)
+                if response.status_code == 200:
+                    responses.append(response)
 def main():
-    test_avatar_store ()
-    print(f"[STORE AVA ][ {success} / {total} ]")
-    test_avatar_access()
+    test_avatar_store()
+    _access_check()
     test_bg_store()
-    print(f"[STORE BACK][ {success} / {total} ]")
+    _access_check()
 
 if __name__ == "__main__": main()

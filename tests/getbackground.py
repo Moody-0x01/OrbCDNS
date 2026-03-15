@@ -4,7 +4,8 @@ import os
 from random import randint
 import requests
 
-PAGES=20
+
+PAGES=10
 HAVEN_KEY = os.environ['WALLHAVEN_API_KEY']
 if not HAVEN_KEY:
     print("U can not download wallpapers/backgrounds with no api key please set: WALLHAVEN_API_KEY")
@@ -24,10 +25,9 @@ def build_query(page, seed, category = "010", purity = "100") -> str:
     """
     base = "https://wallhaven.cc/api/v1/search"
     
-    return f"{base}?seed={seed}&categories={category}&apikey={HAVEN_KEY}&atleast=1920x1080&page={page}&purity={purity}"
+    return f"{base}?seed={seed}&categories={category}&apikey={HAVEN_KEY}&atleast=1920x1080&page={page}&purity={purity}&q=darksouls"
 
 seed = generate_seed()
-# print("Seed: ", seed)
 final_result = []
 for i in range(PAGES):
     query_url = build_query(i+1, seed)
@@ -36,17 +36,17 @@ for i in range(PAGES):
     # for wall in deserialized_list: final_result.append(wall)
     final_result.append(deserialized_list)
 
-    
-# for em in final_result: __import__('pprint').pprint(em)
 for em in final_result:
     for img in em:
         # TODO: Get the image and save it at: ./img/backgrounds/
-        try:
-            u = img['path']
-            fn = u.split('/')[-1]
-            response = requests.get(img['path'])
-            ibytes = response.content
-            with open(f"./img/backgrounds/{fn}", "wb+") as fp: fp.write(ibytes)
-            print(f"[*] {u} -> {f"./img/backgrounds/{fn}"}")
-        except Exception as e:
-            raise e
+        w, h = img['dimension_x'], img['dimension_y']
+        if w >= 1920 and h >= 1080:
+            try:
+                u = img['path']
+                fn = u.split('/')[-1]
+                response = requests.get(img['path'])
+                ibytes = response.content
+                with open(f"./img/dakrsouls/{fn}", "wb+") as fp: fp.write(ibytes)
+                print(f"[*] {u} -> {f"./img/backgrounds/{fn}"}")
+            except Exception as e:
+                raise e

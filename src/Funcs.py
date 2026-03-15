@@ -1,15 +1,18 @@
+# TODO: Fix the saves, what if the request is mallformed or the mime is not good????
 
+# from typing import Tuple
+from flask import Response as werkzeugResponse, send_file
+from http import HTTPStatus
 from os import path
-from warnings import catch_warnings
 
-from werkzeug.datastructures.structures import exceptions
-from models import Response
+from models import makeResponse, Response as genRes
 from base64 import b64decode
 from pathlib import Path
-from json import load, dump 
 from constants import API_URL, CDN
 from random import randint
 from hashlib import sha256
+
+type Response = werkzeugResponse|genRes
 
 assert CDN, "Could not find the cdn, check if it is assigned in the env vars."
 
@@ -20,18 +23,49 @@ TYPES = [
 IMG = 0
 BG = 1
 
-def makeResponse(code: int = 200, data: dict|str = "No data") -> dict: return Response(code, data).make()
+MAX_IMAGE_SIZE        = 5 * 1024 * 1024  # 5MB
+BadRequest            = makeResponse(HTTPStatus.BAD_REQUEST, "Bad Request! Something is missing or not right")
+IncorrectSize         = makeResponse(HTTPStatus.BAD_REQUEST, "Bad Request! Image too big")
+Unsupported           = makeResponse(HTTPStatus.BAD_REQUEST, "Bad Request! image data is invalid")
+NotFound              = makeResponse(HTTPStatus.NOT_FOUND, "Resource not found")
+ServerError           = makeResponse(HTTPStatus.INTERNAL_SERVER_ERROR, "Internal  Server Error")
+ResourceAlreadyExists = makeResponse(HTTPStatus.CONFLICT, "resource already exists")
 
-def Save(url: str, ImagePath, Bytes, update = False):
-    if path.exists(ImagePath) and not update: return makeResponse(204, "already exists")
+ALLOWED_IMAGE_SIGNATURES = {
+    "jpeg": (b"\xff\xd8\xff",),
+    "png":  (b"\x89PNG\r\n\x1a\n",),
+    "gif":  (b"GIF87a", b"GIF89a"),
+    "webp": None,  # handled separately below
+}
+
+
+def is_valid_image(data: bytes) -> bool:
+    """Check magic bytes to confirm data is a real image."""
+    if not data:
+        return False
+
+    # JPEG
+    if data[:3] == b"\xff\xd8\xff":
+        return True
+    # PNG
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return True
+    # GIF
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return True
+    # WebP (RIFF....WEBP)
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return True
+    return False
+
+def Save(url: str, ImagePath, Bytes, update = False) -> Response:
+    if path.exists(ImagePath) and not update: return ResourceAlreadyExists
     try:
         with open(ImagePath, "wb") as fp: fp.write(Bytes)
-    except IOError as _: return makeResponse(500, "Server failed to handle your request")
-    return makeResponse(200, {
-        "url": url
-    })
+    except IOError as _: return ServerError
+    return makeResponse(200, { "url": url })
 
-def Unpack(IMime, TypeIndex: int) -> tuple:
+def Unpack(IMime: str, TypeIndex: int) -> tuple:
     """ Unpacking the mime image. """
     Extention = IMime.split(";")[0].split(":")[1].split("/")[1]
     Bytes = b64decode(IMime.split(";")[1].split(",")[1].encode())
@@ -41,85 +75,80 @@ def Unpack(IMime, TypeIndex: int) -> tuple:
 
     return Bytes, f"{FileName}.{Extention}"
 
+def get_mime_info(data: dict, itype: int = IMG) -> Response|tuple[str, bytes, str]:
+    if not "mime" in data or "uuid" not in data:
+        return BadRequest
 
-def SaveUserImage(data: dict, update = False) -> dict:
+    mime, uuid = data["mime"], str(data["uuid"]) if isinstance(data["uuid"], int) else data["uuid"]
+    if not isinstance(mime, str):
+        return BadRequest
 
-    MIME, ID = data["mime"], data["id"] 
+    Upath = Path(CDN) / uuid
 
-    if isinstance(ID, int): ID = str(ID)
-    Upath = Path(CDN) / ID
+    if not Upath.exists():
+        Upath.mkdir()
 
-    if not Upath.exists(): Upath.mkdir()
+    image_bytes, filename = Unpack(mime, itype)
 
-    Bytes, FName = Unpack(MIME, IMG)
-    ImagePath = Upath / FName
-    return Save(f"{API_URL}/orb/{ID}/{FName}", ImagePath, Bytes, update)
+    if not is_valid_image(image_bytes):
+        return Unsupported
 
-def getUserImage(uuid: int | str, fname) -> tuple[str, str] | bool:
-    if "img" in fname:
-        imgPath = Path(CDN) / str(uuid) / fname
-        if imgPath.exists():
-            Extention = fname.split(".")[1] # get img ext.
-            return imgPath, Extention
+    if len(image_bytes) > MAX_IMAGE_SIZE:
+        return IncorrectSize
+    return uuid, image_bytes, filename
 
-    return False
+def send_file_object(path: Path) -> Response:
+    if path.exists():
+        ext = path.name.split(".")[-1]
+        return send_file(path, mimetype=f'image/{ext}')
+    return NotFound
 
-def SaveUserBackground(data: dict, update = False) -> dict:
-    # TODO: If the calls is comming as a normal post.
-    # then it is better to check the update, if it already exists return 400
-    MIME, ID = data["mime"], data["id"] 
-    if isinstance(ID, int): ID = str(ID)
-    Upath = Path(CDN) / ID
-    if not Upath.exists(): Upath.mkdir()
-    Bytes, FName = Unpack(MIME, BG)
-    ImagePath = Upath / FName
-    return Save(f"{API_URL}/orb/bg/{ID}/{FName}", ImagePath, Bytes, update)
-def getUserBg(uuid: str | int, fname) -> tuple[str, str] | bool:
-    if "bg" in fname:
-        imgPath = Path(CDN) / str(uuid) / fname
-        if imgPath.exists():
-            Extention = fname.split(".")[1] # get img ext.
-            return imgPath, Extention
-    return False
+def SaveUserImage(data: dict, update = False) -> Response:
+    info = get_mime_info(data);
+    if not isinstance(info, tuple): return info
 
-def generateRandomName():
+    uuid, image_bytes, filename = info
+    Upath = Path(CDN) / uuid
+    ImagePath = Upath / filename
+    return Save(f"{API_URL}/orb/{uuid}/{filename}", ImagePath, image_bytes, update)
+
+def getUserImage(uuid: int | str, filename: str) -> Response:
+    imgPath = Path(CDN) / str(uuid) / filename
+    return send_file_object(imgPath)
+
+def SaveUserBackground(data: dict, update = False) -> Response:
+    info = get_mime_info(data, BG);
+    if not isinstance(info, tuple): return info
+    uuid, image_bytes, filename = info
+    Upath = Path(CDN) / uuid
+    ImagePath = Upath / filename
+    return Save(f"{API_URL}/orb/bg/{uuid}/{filename}", ImagePath, image_bytes, update)
+
+def getUserBg(uuid: str | int, filename: str) -> Response:
+    imgPath = Path(CDN) / str(uuid) / filename
+    return send_file_object(imgPath)
+
+def generateRandomName() -> str:
     return sha256("".join([chr(i) for i in [randint(0, 100) for i in range(32)]]).encode()).hexdigest()
     
 
-def saveUserPostImage(data: dict) -> dict:
-   
-    MIME, ID, PID = data["mime"], data["id"], data["postID"]
-    
-    if not isinstance(MIME, list):
-    
-        if isinstance(ID, int): ID = str(ID)
-        if isinstance(PID, int): PID = str(PID)
-        
-        Upath = Path(CDN) / ID
+def saveUserPostImage(data: dict) -> Response:
+    info = get_mime_info(data, 2);
+    if not isinstance(info, tuple): return info
+    if not "post_id" in data: return BadRequest
+    uuid, image_bytes, filename = info
+    pid = str(data["post_id"])
+    Upath = Path(CDN) / uuid
+    PostsPath = Upath / "posts"
+    if not PostsPath.exists():
+        PostsPath.mkdir()
+    currentPostPath = PostsPath / pid
 
-        if not Upath.exists(): Upath.mkdir()
+    if not currentPostPath.exists(): currentPostPath.mkdir()
 
-        PostsPath = Upath / "posts"
+    ImagePath = currentPostPath / filename
+    return Save(f"{API_URL}/orb/post/{uuid}/{pid}/{filename}", ImagePath, image_bytes)
 
-        if not PostsPath.exists(): PostsPath.mkdir()
-
-        currentPostPath = PostsPath / PID
-
-        if not currentPostPath.exists(): currentPostPath.mkdir()
-
-        Bytes, FName = Unpack(MIME, 2)
-
-        ImagePath = currentPostPath / FName
-        return Save(f"{API_URL}/orb/post/{ID}/{PID}/{FName}", ImagePath, Bytes)
-
-    return makeResponse(400, "Can not save multiple mimes at the moment.")
-
-
-def GetUserPostImg(uuid: str | int, pid: int | str, fname) -> tuple[str, str] | bool:
-
-    imgPath = Path(CDN) / str(uuid) / "posts" / str(pid) / fname
-
-    if imgPath.exists():
-        Extention = fname.split(".")[1] # get img ext.
-        return imgPath, Extention
-    return False
+def GetUserPostImg(uuid: str, pid: str, filename: str) -> Response:
+    imgPath = Path(CDN) / str(uuid) / "posts" / str(pid) / filename
+    return send_file_object(imgPath)

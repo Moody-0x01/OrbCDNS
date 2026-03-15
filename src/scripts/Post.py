@@ -18,7 +18,7 @@ def MakeMime(fp):
 def addAvatar(uuid: int | str, Mime: str) -> dict:
     
     res = post(addIMG, json={
-        "id": uuid,
+        "uuid": uuid,
         "mime": Mime
     })
 
@@ -26,17 +26,17 @@ def addAvatar(uuid: int | str, Mime: str) -> dict:
 
 def addbg(uuid: int | str, Mime: str) -> dict:
     res = post(addBG, json={
-        "id": uuid,
+        "uuid": uuid,
         "mime": Mime
     })
 
     return res.json()
 
-def addPost(uuid, Mime, postid=1):
+def addPost(uuid, Mime, post_id=1):
     res = post(addPOST, json={
-        "id": uuid,
+        "uuid": uuid,
         "mime": Mime,
-        "postID": postid
+        "post_id": post_id
     })
 
     return res.json()

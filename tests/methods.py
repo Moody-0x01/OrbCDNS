@@ -12,14 +12,13 @@ addPOST = f"{api}/orb/NewPostImg"
 
 def MakeMime(fp):
     ext = fp.name.split("/")[-1].split(".")[1]
-    print(ext)
     enc = b64encode(fp.read()).decode()
     return f"data:image/{ext};base64,{enc}"
 
 def addAvatar(uuid: int | str, Mime: str) -> Response:
     
     res = post(addIMG, json={
-        "id": uuid,
+        "uuid": uuid,
         "mime": Mime
     })
 
@@ -27,17 +26,16 @@ def addAvatar(uuid: int | str, Mime: str) -> Response:
 
 def addbg(uuid: int | str, Mime: str) -> Response:
     res = post(addBG, json={
-        "id": uuid,
+        "uuid": uuid,
         "mime": Mime
     })
-
     return res
 
-def addPost(uuid, Mime, postid=1) -> Response:
+def addPost(uuid, Mime, post_id=1) -> Response:
     res = post(addPOST, json={
-        "id": uuid,
+        "uuid": uuid,
         "mime": Mime,
-        "postID": postid
+        "post_id": post_id
     })
 
     return res
