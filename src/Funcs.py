@@ -2,61 +2,19 @@
 
 # from typing import Tuple
 from flask import Response as werkzeugResponse, send_file
-from http import HTTPStatus
 from os import path
-
+from validation import is_valid_image
 from models import makeResponse, Response as genRes
 from base64 import b64decode
 from pathlib import Path
-from constants import API_URL, CDN
+from constants import API_URL, CDN, IMG, BG, TYPES, MAX_IMAGE_SIZE, BadRequest, IncorrectSize, Unsupported, NotFound, ServerError, ResourceAlreadyExists 
+
 from random import randint
 from hashlib import sha256
 
 type Response = werkzeugResponse|genRes
 
 assert CDN, "Could not find the cdn, check if it is assigned in the env vars."
-
-TYPES = [
-    "img", "bg", "post-"
-]
-
-IMG = 0
-BG = 1
-
-MAX_IMAGE_SIZE        = 5 * 1024 * 1024  # 5MB
-BadRequest            = makeResponse(HTTPStatus.BAD_REQUEST, "Bad Request! Something is missing or not right")
-IncorrectSize         = makeResponse(HTTPStatus.BAD_REQUEST, "Bad Request! Image too big")
-Unsupported           = makeResponse(HTTPStatus.BAD_REQUEST, "Bad Request! image data is invalid")
-NotFound              = makeResponse(HTTPStatus.NOT_FOUND, "Resource not found")
-ServerError           = makeResponse(HTTPStatus.INTERNAL_SERVER_ERROR, "Internal  Server Error")
-ResourceAlreadyExists = makeResponse(HTTPStatus.CONFLICT, "resource already exists")
-
-ALLOWED_IMAGE_SIGNATURES = {
-    "jpeg": (b"\xff\xd8\xff",),
-    "png":  (b"\x89PNG\r\n\x1a\n",),
-    "gif":  (b"GIF87a", b"GIF89a"),
-    "webp": None,  # handled separately below
-}
-
-
-def is_valid_image(data: bytes) -> bool:
-    """Check magic bytes to confirm data is a real image."""
-    if not data:
-        return False
-
-    # JPEG
-    if data[:3] == b"\xff\xd8\xff":
-        return True
-    # PNG
-    if data[:8] == b"\x89PNG\r\n\x1a\n":
-        return True
-    # GIF
-    if data[:6] in (b"GIF87a", b"GIF89a"):
-        return True
-    # WebP (RIFF....WEBP)
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return True
-    return False
 
 def Save(url: str, ImagePath, Bytes, update = False) -> Response:
     if path.exists(ImagePath) and not update: return ResourceAlreadyExists
